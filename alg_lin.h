@@ -32,6 +32,7 @@ typedef struct obj {
   Vect3D position;
   Color color;
   enum obj_type obj_type;
+  float radius;
 } Object;
 
 typedef struct scene {
@@ -45,8 +46,9 @@ void scalar_mult(float scalar, Vect3D *res);
 void scalar_mult_vet(Vect3D v1, Vect3D v2, Vect3D *res);
 void vet_mult_vet(Vect3D v1, Vect3D v2, Vect3D *res);
 float normalize(Vect3D v);
+float dot(Vect3D v1, Vect3D v2);
 
 int closest_intersection(Ray ray, Scene scene);
-int intersection(Ray ray, Object obj);
+float intersection(Ray ray, Object obj);
 
 #endif

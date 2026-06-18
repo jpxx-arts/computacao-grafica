@@ -19,13 +19,11 @@ void scalar_mult(float scalar, Vect3D *res) {
     res->z *= scalar;
 }
 
-void scalar_mult_vet(Vect3D v1, Vect3D v2, Vect3D *res) {
-    res->x = v1.x * v2.x;
-    res->y = v1.y * v2.y;
-    res->z = v1.z * v2.z;
+float dot(Vect3D v1, Vect3D v2) {
+    return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
 }
 
-void vet_mult_vet(Vect3D v1, Vect3D v2, Vect3D *res) {
+void cross(Vect3D v1, Vect3D v2, Vect3D *res) {
     res->x = v1.y*v2.z - v2.y*v1.z;
     res->y = v1.x*v2.z - v2.x*v1.z;
     res->z = v1.x*v2.y - v2.x*v1.y;
@@ -35,34 +33,48 @@ float normalize(Vect3D v) {
     return sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
-int intersection(Ray ray, Object obj) {
-    // I think I could make a macro to handle with multiple object types. Maybe in the future...
+float intersection(Ray ray, Object obj) {
     switch (obj.obj_type) {
-        case SPHERE:
-            // Probably A will be 1. So I have to remove this once validated.
-            float A = (ray.look_at.x*ray.look_at.x) + (ray.look_at.y*ray.look_at.y) + (ray.look_at.z*ray.look_at.z);
-            float B = 2 * (ray.look_from.x*ray.look_at.x +ray.look_from.y*ray.look_at.y + ray.look_from.z*ray.look_at.z);
-            float C = ray.look_from.x*ray.look_from.x + ray.look_from.y+ray.look_from.y + ray.look_from.z*ray.look_from.z;
+        case SPHERE: {
+            // Solve |O + t*D - C|^2 = r^2  =>  A*t^2 + B*t + C = 0
+            // where oc = O - C (vector from sphere center to ray origin)
+            Vect3D oc;
+            sub_vet(ray.look_from, obj.position, &oc);
 
-            float delta = B*B - 4*C;
+            // Probably A will be 1 once direction is normalized.
+            float A = dot(ray.look_at, ray.look_at);
+            float B = 2.0f * dot(ray.look_at, oc);
+            float C = dot(oc, oc) - obj.radius * obj.radius;
 
-            if (delta < 0) {
-                return -1;
-            }
+            float delta = B*B - 4.0f*A*C;
 
-            float t1 = (-B + sqrt(delta))/2*A;
-            float t2 = (-B - sqrt(delta))/2*A;
+            if (delta < 0.0f) return -1.0f;
 
-            break;
+            float t1 = (-B + sqrtf(delta)) / (2.0f * A);
+            float t2 = (-B - sqrtf(delta)) / (2.0f * A);
+
+            // t2 <= t1; prefer the smaller positive value (nearest hit in front of ray)
+            if (t2 > 0.0f) return t2;
+            if (t1 > 0.0f) return t1;
+            return -1.0f;
+        }
+        case PLAN:
+            return -1.0f;
     }
+    return -1.0f;
 }
 
+// Returns the index of the closest intersected object, or -1 if none.
 int closest_intersection(Ray ray, Scene scene) {
-    int closest_point = INFINITY;
+    float closest_t = INFINITY;
+    int closest_idx = -1;
 
     for (int i = 0; i < scene.obj_qtd; i++) {
-        if (intersection(ray, scene.objs[i]) < closest_point) {
-
+        float t = intersection(ray, scene.objs[i]);
+        if (t > 0.0f && t < closest_t) {
+            closest_t = t;
+            closest_idx = i;
         }
     }
+    return closest_idx;
 }
